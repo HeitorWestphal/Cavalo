@@ -7,6 +7,7 @@ import java.util.ArrayList;
 public class EmprestimoDAO {
 
     private ArrayList<Emprestimo> minhaLista = new ArrayList<>();
+    private ArrayList<String> FerSelect = new ArrayList<>();
     private DatabaseConnection db;
 
     public EmprestimoDAO() {
@@ -16,15 +17,9 @@ public class EmprestimoDAO {
     public ArrayList<Emprestimo> getMinhaLista() {
         minhaLista.clear();
 
-        String query = "SELECT e.id, e.id_amigo, e.id_ferramenta, e.data_limite, e.concluido " +
-               "FROM tb_emprestimos e " +
-               "JOIN tb_amigos a ON e.id_amigo = a.id " +
-               "JOIN tb_ferramentas f ON e.id_ferramenta = f.id";
-
-
         try {
             Statement stmt = db.getConexao().createStatement();
-            ResultSet res = stmt.executeQuery(query);
+            ResultSet res = stmt.executeQuery("SELECT * FROM tb_emprestimos WHERE concluido is false");
 
             while (res.next()) {
                 int id = res.getInt("id");
@@ -183,5 +178,67 @@ public class EmprestimoDAO {
             System.out.println("Erro:" + erro);
         }
         return nomeFerramenta;
+    }
+
+    public boolean verificarPendencia(int id) {
+
+        try {
+            Statement stmt = db.getConexao().createStatement();
+            ResultSet res = stmt.executeQuery("select id, concluido from tb_emprestimos;");
+
+            while (res.next()) {
+                int idEmp = res.getInt("id");
+                boolean  concluido = res.getBoolean("concluido");
+
+                if (idEmp == id && concluido == false ) {
+                    return true;
+                }
+            }
+            stmt.close();
+
+        } catch (SQLException ex) {
+            System.out.println("Erro:" + ex);
+        }
+        return false;
+    }
+
+    public boolean alterarIdEmpFerramentaLivre() {
+        String sql = "UPDATE tb_ferramentas SET id = ? WHERE nome = ?";
+        try {
+            PreparedStatement stmt = db.getConexao().prepareStatement(sql);
+
+            for (String nome : FerSelect) {
+                stmt.setInt(1, maiorID());
+                stmt.setString(2, nome);
+                stmt.execute();
+            }
+            FerSelect.clear();
+
+            stmt.close();
+
+            return true;
+
+        } catch (SQLException erro) {
+            System.out.println("Erro: " + erro);
+            throw new RuntimeException(erro);
+        }
+    }
+    
+    public boolean alterarIdEmpFerramentaPendente(int id) {
+        String sql = "UPDATE tb_ferramentas SET id = null WHERE id = ?";
+        try {
+            PreparedStatement stmt = db.getConexao().prepareStatement(sql);
+
+            stmt.setInt(1, id);
+            stmt.execute();
+
+            stmt.close();
+
+            return true;
+
+        } catch (SQLException erro) {
+            System.out.println("Erro: " + erro);
+            throw new RuntimeException(erro);
+        }
     }
 }
